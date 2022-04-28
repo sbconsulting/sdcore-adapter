@@ -17,6 +17,27 @@ import (
 
 var log = logging.GetLogger("synchronizer")
 
+func (s *Synchronizer) DoStuff(config gnmi.ConfigForest) {
+	enterpriseConfig, okay := config["acme"]
+	if !okay {
+		return
+	}
+
+	device := enterpriseConfig.(*RootDevice)
+
+	site, okay := device.Site["aib4gent-aib4gsite"]
+	if okay {
+		dev, okay := site.Device["aib4gent-dev"]
+		if okay {
+			if dev.State == nil {
+				dev.State = &DeviceState{}
+			}
+			dev.State.IpAddress = aStr("1.2.3.4")
+		}
+	}
+	//config.(*synchronizer.RootDevice).Site["aib4gent-aib4gsite"].Device["aib4gent-dev"].State.IpAddress = "1.2.3.4"
+}
+
 // Synchronize synchronizes the state to the underlying service.
 func (s *Synchronizer) Synchronize(config gnmi.ConfigForest, callbackType gnmi.ConfigCallbackType, target string, path *pb.Path) error {
 	var err error
@@ -27,6 +48,8 @@ func (s *Synchronizer) Synchronize(config gnmi.ConfigForest, callbackType gnmi.C
 	if callbackType == gnmi.Forced {
 		s.CacheInvalidate() // invalidate the post cache if this resync was forced by Diagnostic API
 	}
+
+	s.DoStuff(config)
 
 	err = s.enqueue(config, callbackType, target)
 	return err
